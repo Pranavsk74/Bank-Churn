@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bank Churn Intelligence</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-effect"></div>
+    
+    <div class="container">
+        <header>
+            <h1>Bank Customer Churn Intelligence</h1>
+            <p>Predict customer retention with advanced ML insights</p>
+        </header>
+
+        <main>
+            <div class="card form-card">
+                <h2>Customer Data</h2>
+                <form id="churn-form">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label for="CreditScore">Credit Score</label>
+                            <input type="number" id="CreditScore" name="CreditScore" required placeholder="e.g. 600">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="Age">Age</label>
+                            <input type="number" id="Age" name="Age" required placeholder="e.g. 35">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="Tenure">Tenure (Years)</label>
+                            <input type="number" id="Tenure" name="Tenure" required placeholder="e.g. 5">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="Balance">Balance</label>
+                            <input type="number" step="0.01" id="Balance" name="Balance" required placeholder="e.g. 100000.00">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="NumOfProducts">Number of Products</label>
+                            <input type="number" id="NumOfProducts" name="NumOfProducts" required placeholder="e.g. 2">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="EstimatedSalary">Estimated Salary</label>
+                            <input type="number" step="0.01" id="EstimatedSalary" name="EstimatedSalary" required placeholder="e.g. 75000.00">
+                        </div>
+
+                        <div class="input-group">
+                            <label for="Geography">Geography</label>
+                            <select id="Geography" name="Geography" required>
+                                <option value="" disabled selected>Select country</option>
+                                <option value="France">France</option>
+                                <option value="Germany">Germany</option>
+                                <option value="Spain">Spain</option>
+                            </select>
+                        </div>
+
+                        <div class="input-group">
+                            <label for="Gender">Gender</label>
+                            <select id="Gender" name="Gender" required>
+                                <option value="" disabled selected>Select gender</option>
+                                <option value="Female">Female</option>
+                                <option value="Male">Male</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Added missing features to exactly match model training -->
+                        <div class="input-group">
+                            <label for="Card Type">Card Type</label>
+                            <select id="Card Type" name="Card Type" required>
+                                <option value="" disabled selected>Select card</option>
+                                <option value="DIAMOND">Diamond</option>
+                                <option value="GOLD">Gold</option>
+                                <option value="SILVER">Silver</option>
+                                <option value="PLATINUM">Platinum</option>
+                            </select>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="Satisfaction Score">Satisfaction Score (1-5)</label>
+                            <input type="number" min="1" max="5" id="Satisfaction Score" name="Satisfaction Score" required placeholder="e.g. 3">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="Point Earned">Points Earned</label>
+                            <input type="number" id="Point Earned" name="Point Earned" required placeholder="e.g. 500">
+                        </div>
+                    </div>
+
+                    <div class="checkbox-group-container">
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="IsActiveMember" name="IsActiveMember">
+                            <label for="IsActiveMember">Is Active Member</label>
+                        </div>
+                        
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="HasCrCard" name="HasCrCard">
+                            <label for="HasCrCard">Has Credit Card</label>
+                        </div>
+                    </div>
+
+                    <button type="submit" id="submit-btn">
+                        <span class="btn-text">Predict Churn Risk</span>
+                        <span class="spinner" style="display: none;"></span>
+                    </button>
+                    <div id="error-message" class="error-msg"></div>
+                </form>
+            </div>
+
+            <div class="card result-card" id="result-container" style="display: none;">
+                <h2>Prediction Result</h2>
+                <div class="result-content">
+                    <div class="probability-circle" id="prob-circle">
+                        <div class="prob-value" id="prob-value">0%</div>
+                        <div class="prob-label">Churn Probability</div>
+                    </div>
+                    <div class="details">
+                        <div class="risk-badge" id="risk-badge">Low Risk</div>
+                        <h3>Business Recommendation:</h3>
+                        <p id="recommendation-text">Maintain regular communication.</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        document.getElementById('churn-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const form = e.target;
+            const submitBtn = document.getElementById('submit-btn');
+            const btnText = submitBtn.querySelector('.btn-text');
+            const spinner = submitBtn.querySelector('.spinner');
+            const resultContainer = document.getElementById('result-container');
+            const errorMsg = document.getElementById('error-message');
+            
+            // Collect data
+            const formData = new FormData(form);
+            const data = Object.fromEntries(formData.entries());
+            
+            // Handle checkboxes (if not checked, they don't appear in FormData)
+            data.IsActiveMember = form.IsActiveMember.checked ? 1 : 0;
+            data.HasCrCard = form.HasCrCard.checked ? 1 : 0;
+            
+            // UI Loading state
+            btnText.textContent = 'Predicting...';
+            spinner.style.display = 'inline-block';
+            submitBtn.disabled = true;
+            errorMsg.style.display = 'none';
+            errorMsg.textContent = '';
+            
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.error || 'Failed to get prediction');
+                }
+                
+                // Show Result
+                displayResult(result);
+                
+            } catch (error) {
+                errorMsg.textContent = error.message;
+                errorMsg.style.display = 'block';
+                resultContainer.style.display = 'none';
+            } finally {
+                // Restore button state
+                btnText.textContent = 'Predict Churn Risk';
+                spinner.style.display = 'none';
+                submitBtn.disabled = false;
+            }
+        });
+        
+        function displayResult(result) {
+            const container = document.getElementById('result-container');
+            const probValue = document.getElementById('prob-value');
+            const riskBadge = document.getElementById('risk-badge');
+            const recText = document.getElementById('recommendation-text');
+            const probCircle = document.getElementById('prob-circle');
+            
+            // Reveal container with animation
+            container.style.display = 'block';
+            container.classList.remove('slide-up');
+            void container.offsetWidth; // trigger reflow
+            container.classList.add('slide-up');
+            
+            // Set values
+            const percentage = (result.probability * 100).toFixed(1);
+            probValue.textContent = percentage + '%';
+            riskBadge.textContent = result.risk_category;
+            recText.textContent = result.recommendation;
+            
+            // Apply colors based on risk
+            let color = '';
+            let shadowColor = '';
+            if (result.risk_category === 'Low Risk') {
+                color = 'var(--success-color)';
+                shadowColor = 'rgba(34, 197, 94, 0.2)';
+            } else if (result.risk_category === 'Medium Risk') {
+                color = 'var(--warning-color)';
+                shadowColor = 'rgba(249, 115, 22, 0.2)';
+            } else {
+                color = 'var(--danger-color)';
+                shadowColor = 'rgba(239, 68, 68, 0.2)';
+            }
+            
+            riskBadge.style.backgroundColor = color;
+            riskBadge.style.boxShadow = `0 4px 12px ${shadowColor}`;
+            
+            // Animate conic gradient on circle
+            probCircle.style.background = `conic-gradient(${color} ${percentage}%, var(--surface-light) 0%)`;
+            probCircle.style.boxShadow = `0 0 30px ${shadowColor}`;
+            probValue.style.color = color;
+        }
+    </script>
+</body>
+</html>
